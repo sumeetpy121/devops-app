@@ -20,7 +20,15 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Build Docker image
-      run: docker build -t sumeetpy121/devops-app:latest .
+      run: |
+        docker build -t sumeetpy121/devops-app:${{ github.sha }} .
+        docker push sumeetpy121/devops-app:${{ github.sha }}
 
     - name: Push Docker image
       run: docker push sumeetpy121/devops-app:latest
+
+    - name: Update deployment image
+      run: |
+        kubectl set image deployment/devops-app \
+        devops-app=sumeetpy121/devops-app:${{ github.sha }} \
+        -n devops-lab
