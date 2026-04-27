@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: CI-CD Pipeline
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,11 +21,18 @@ jobs:
 
     - name: Build Docker image
       run: |
-        docker build -t sumeetpy121/devops-app:${{ github.sha }} .
-        docker push sumeetpy121/devops-app:${{ github.sha }}
+        docker build -t sumeetpy121/devops-app:${{ github.sha }} \
+                     -t sumeetpy121/devops-app:latest .
 
-    - name: Push Docker image
-      run: docker push sumeetpy121/devops-app:latest
+    - name: Push Docker images
+      run: |
+        docker push sumeetpy121/devops-app:${{ github.sha }}
+        docker push sumeetpy121/devops-app:latest
+
+    - name: Set up kubeconfig
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
 
     - name: Update deployment image
       run: |
