@@ -2,6 +2,8 @@ from flask import Flask, render_template_string
 import random
 import os
 
+
+
 app = Flask(__name__)
 
 HTML = """
@@ -100,6 +102,7 @@ HTML = """
 <body>
 
 <header>
+    <p>Version: v2</p>
     <h1>🚀 DevOps Control Panel</h1>
     <p>Real-time Infrastructure Monitoring & Deployment Insights</p>
 </header>
