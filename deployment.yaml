@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: devops-app
-        image: sumeetpy121/devops-app:latest
+        image: sumeetpy121/devops-app:v2
         imagePullPolicy: Always
         ports:
         - containerPort: 8080

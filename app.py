@@ -1,13 +1,39 @@
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, request
 import random
 import os
+import time
 
-
+# Prometheus
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
 app = Flask(__name__)
 
-HTML = """
-<!DOCTYPE html>
+# =========================
+# Prometheus Metrics
+# =========================
+
+REQUEST_COUNT = Counter(
+    'app_requests_total',
+    'Total number of requests',
+    ['method', 'endpoint']
+)
+
+REQUEST_LATENCY = Histogram(
+    'app_request_latency_seconds',
+    'Request latency in seconds',
+    ['endpoint']
+)
+
+ERROR_COUNT = Counter(
+    'app_errors_total',
+    'Total number of errors'
+)
+
+# =========================
+# HTML (unchanged UI)
+# =========================
+
+HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -167,21 +193,51 @@ HTML = """
 </html>
 """
 
+# =========================
+# Routes
+# =========================
+
 @app.route("/")
 def home():
-    return render_template_string(
-        HTML,
-        pods=random.randint(5, 20),
-        services=random.randint(3, 10),
-        deployments=random.randint(2, 8),
-        errors=random.randint(0, 3),
-        cpu=round(os.getloadavg()[0] * 100, 2),
-        memory=round(int(open('/proc/meminfo').read().split('MemAvailable:')[1].split()[0]) / 1024, 2),
-    )
+    start_time = time.time()
+
+    REQUEST_COUNT.labels(method=request.method, endpoint="/").inc()
+
+    try:
+        response = render_template_string(
+            HTML,
+            pods=random.randint(5, 20),
+            services=random.randint(3, 10),
+            deployments=random.randint(2, 8),
+            errors=random.randint(0, 3),
+            cpu=round(os.getloadavg()[0] * 100, 2),
+            memory=round(
+                int(open('/proc/meminfo').read().split('MemAvailable:')[1].split()[0]) / 1024, 2
+            ),
+        )
+        return response
+
+    except Exception:
+        ERROR_COUNT.inc()
+        raise
+
+    finally:
+        REQUEST_LATENCY.labels(endpoint="/").observe(time.time() - start_time)
+
 
 @app.route("/health")
 def health():
     return {"status": "ok"}, 200
 
+
+@app.route("/metrics")
+def metrics():
+    return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
+
+
+# =========================
+# Run App
+# =========================
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080, debug=True)
+    app.run(host="0.0.0.0", port=8080)
